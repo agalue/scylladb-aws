@@ -18,6 +18,8 @@ The OpenNMS instance will have PostgreSQL 10 embedded, as well as a customized k
 
 * Install the Terraform binary from [terraform.io](https://www.terraform.io)
 
+> *NOTE*: The templates requires Terraform version 0.12.x.
+
 * Tweak the common settings on `vars.tf`, specially `aws_key_name`, `aws_private_key` and `aws_region`.
 
   If the region is changed, keep in mind that the ScyllaDB AMIs are not available on every region (click [here](https://www.scylladb.com/download/#aws) for more information). The OpenNMS instance is based on Amazon Linux 2, which is available on all regions (make sure to use the correct AMI ID).

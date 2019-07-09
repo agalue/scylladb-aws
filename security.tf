@@ -15,7 +15,7 @@ resource "aws_security_group" "common" {
     from_port   = 161
     to_port     = 161
     protocol    = "udp"
-    cidr_blocks = ["${var.vpc_cidr}"]
+    cidr_blocks = [var.vpc_cidr]
   }
 
   ingress {
@@ -32,10 +32,12 @@ resource "aws_security_group" "common" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  vpc_id = "${aws_vpc.default.id}"
+  vpc_id = aws_vpc.default.id
 
-  tags {
-    Name = "Terraform Common SG"
+  tags = {
+    Name        = "Terraform Common SG"
+    Environment = "Test"
+    Department  = "Support"
   }
 }
 
@@ -48,7 +50,7 @@ resource "aws_security_group" "scylladb" {
     to_port     = 7599
     protocol    = "tcp"
     description = "JMX"
-    cidr_blocks = ["${var.vpc_cidr}"]
+    cidr_blocks = [var.vpc_cidr]
   }
 
   ingress {
@@ -56,7 +58,7 @@ resource "aws_security_group" "scylladb" {
     to_port     = 7020
     protocol    = "tcp"
     description = "Intra Node"
-    cidr_blocks = ["${var.vpc_cidr}"]
+    cidr_blocks = [var.vpc_cidr]
   }
 
   ingress {
@@ -64,7 +66,7 @@ resource "aws_security_group" "scylladb" {
     to_port     = 9442
     protocol    = "tcp"
     description = "CQL Native"
-    cidr_blocks = ["${var.vpc_cidr}"]
+    cidr_blocks = [var.vpc_cidr]
   }
 
   ingress {
@@ -72,7 +74,7 @@ resource "aws_security_group" "scylladb" {
     to_port     = 9560
     protocol    = "tcp"
     description = "Thrift"
-    cidr_blocks = ["${var.vpc_cidr}"]
+    cidr_blocks = [var.vpc_cidr]
   }
 
   egress {
@@ -82,10 +84,12 @@ resource "aws_security_group" "scylladb" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  vpc_id = "${aws_vpc.default.id}"
+  vpc_id = aws_vpc.default.id
 
-  tags {
-    Name = "Terraform ScyllaDB SG"
+  tags = {
+    Name        = "Terraform ScyllaDB SG"
+    Environment = "Test"
+    Department  = "Support"
   }
 }
 
@@ -114,7 +118,7 @@ resource "aws_security_group" "opennms" {
     to_port     = 18980
     protocol    = "tcp"
     description = "ONMS JMX"
-    cidr_blocks = ["${var.vpc_cidr}"]
+    cidr_blocks = [var.vpc_cidr]
   }
 
   egress {
@@ -124,9 +128,12 @@ resource "aws_security_group" "opennms" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  vpc_id = "${aws_vpc.default.id}"
+  vpc_id = aws_vpc.default.id
 
-  tags {
-    Name = "Terraform OpenNMS Core SG"
+  tags = {
+    Name        = "Terraform OpenNMS Core SG"
+    Environment = "Test"
+    Department  = "Support"
   }
 }
+

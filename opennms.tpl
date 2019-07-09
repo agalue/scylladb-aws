@@ -72,7 +72,7 @@ yum install -y -q cassandra
 echo "### Installing PostgreSQL 10..."
 
 amazon-linux-extras install postgresql10 -y
-yum install -y -q yum install postgresql-server
+yum install -y -q postgresql-server
 /usr/bin/postgresql-setup --initdb --unit postgresql
 sed -r -i "/^(local|host)/s/(peer|ident)/trust/g" /var/lib/pgsql/data/pg_hba.conf
 systemctl enable postgresql
@@ -84,30 +84,26 @@ yum -y -q install haveged
 systemctl enable haveged
 systemctl start haveged
 
-echo "### Downloading and installing latest Oracle JDK 8..."
+echo "### Downloading and installing latest OpenJDK 11..."
 
-java_url="http://download.oracle.com/otn-pub/java/jdk/8u181-b13/96a7b8442fe848ef90c96a2fad6ed6d1/jdk-8u181-linux-x64.rpm"
-java_rpm=/tmp/jdk8-linux-x64.rpm
+amazon-linux-extras install java-openjdk11 -y
+yum install -y -q java-11-openjdk-devel
 
-wget -c --quiet --header "Cookie: oraclelicense=accept-securebackup-cookie" -O $java_rpm $java_url
-yum install -y -q $java_rpm
-rm -f $java_rpm
-
-echo "### Installing OpenNMS Dependencies from stable repository..."
+echo "### Installing OpenNMS stable repository..."
 
 sed -r -i '/name=Amazon Linux 2/a exclude=rrdtool-*' /etc/yum.repos.d/amzn2-core.repo
 yum install -y -q http://yum.opennms.org/repofiles/opennms-repo-stable-rhel7.noarch.rpm
 rpm --import /etc/yum.repos.d/opennms-repo-stable-rhel7.gpg
+
+echo "### Installing OpenNMS dependencies from the stable repository..."
+
 yum install -y -q jicmp jicmp6 jrrd jrrd2 rrdtool 'perl(LWP)' 'perl(XML::Twig)'
-yum install -y -q opennms-helm
-yum erase -y -q opennms-repo-stable
 
-echo "### Installing OpenNMS from bleeding repository..."
+echo "### Installing OpenNMS and Helm from the stable repository..."
 
-yum install -y -q http://yum.opennms.org/repofiles/opennms-repo-bleeding-rhel7.noarch.rpm
-rpm --import /etc/yum.repos.d/opennms-repo-bleeding-rhel7.gpg
 yum install -y -q opennms-core opennms-webapp-jetty
 yum install -y -q opennms-webapp-hawtio
+yum install -y -q opennms-helm
 
 echo "### Configuring OpenNMS..."
 
