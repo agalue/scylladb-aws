@@ -12,7 +12,7 @@ ring_buffer_size=${ring_buffer_size}
 echo "### Installing common packages..."
 
 yum -y -q update
-yum -y -q install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+amazon-linux-extras install epel -y
 yum -y -q install jq net-snmp net-snmp-utils git pytz dstat htop nmap-ncat tree
 
 echo "### Configuring Kernel..."
