@@ -11,7 +11,7 @@ systemctl restart scylla-jmx
 
 if ! rpm -qa | grep -q net-snmp; then
   echo "### Installing and configuring Net-SNMP..."
-  yum -y -q intall net-snmp net-snmp-utils
+  yum -y -q install net-snmp net-snmp-utils
   cat <<EOF > /etc/snmp/snmpd.conf
 rocommunity public default
 syslocation AWS

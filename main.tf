@@ -23,16 +23,19 @@ resource "null_resource" "scylladb" {
   }
 
   connection {
-    host = element(aws_instance.scylladb.*.public_ip, count.index)
+    host        = element(aws_instance.scylladb.*.public_ip, count.index)
+    type        = "ssh"
+    user        = var.settings["scylladb_ec2_user"]
+    private_key = file(var.aws_private_key)
   }
 
   provisioner "file" {
-    source      = "./scylla-init.sh"
-    destination = "/tmp"
+    source      = "./scylladb-init.sh"
+    destination = "/tmp/scylladb-init.sh"
   }
 
   provisioner "remote-exec" {
-    inline = ["sudo sh /tmp/scylla-init.sh"]
+    inline = ["sudo sh /tmp/scylladb-init.sh"]
   }
 }
 

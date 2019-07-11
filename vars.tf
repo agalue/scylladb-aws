@@ -33,6 +33,9 @@ variable "scylladb_ip_addresses" {
     "172.17.1.21",
     "172.17.1.22",
     "172.17.1.23",
+    "172.17.1.24",
+    "172.17.1.25",
+    "172.17.1.26",
   ]
 }
 
@@ -42,7 +45,8 @@ variable "settings" {
 
   default = {
     scylladb_ami_id             = "ami-0adede0719979b158" # ScyllaDB Custom AMI for us-west-2
-    scylladb_instance_type      = "i3.8xlarge"            # May require to request a limit increase on the chosen region
+    scylladb_instance_type      = "i3.xlarge"             #  4 Cores,  32 GB of RAM
+#   scylladb_instance_type      = "i3.8xlarge"            # 32 Cores, 244 GB of RAM (careful with the AWS limits)
     scylladb_ec2_user           = "centos"
     scylladb_cluster_name       = "OpenNMS-Cluster"
     scylladb_replication_factor = 2                       # It should be consistent with the cluster size. Check scylladb_ip_addresses
