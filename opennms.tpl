@@ -9,6 +9,8 @@ cassandra_rf=${cassandra_rf}
 cache_max_entries=${cache_max_entries}
 ring_buffer_size=${ring_buffer_size}
 
+ip_address=$(curl http://169.254.169.254/latest/meta-data/local-ipv4 2>/dev/null)
+
 echo "### Installing common packages..."
 
 yum -y -q update
@@ -126,7 +128,6 @@ if [ "$mem_in_mb" -gt "30720" ]; then
 fi
 
 # JVM Configuration with an advanced tuning for G1GC based on the chosen EC2 instance type
-hostname=$(hostname)
 cat <<EOF > $opennms_etc/opennms.conf
 START_TIMEOUT=0
 JAVA_HEAP_SIZE=$mem_in_mb
@@ -159,7 +160,7 @@ ADDITIONAL_MANAGER_OPTIONS="\$ADDITIONAL_MANAGER_OPTIONS -Dcom.sun.management.jm
 ADDITIONAL_MANAGER_OPTIONS="\$ADDITIONAL_MANAGER_OPTIONS -Dopennms.poller.server.serverHost=0.0.0.0"
 
 # Accept remote RMI connections on this interface
-ADDITIONAL_MANAGER_OPTIONS="\$ADDITIONAL_MANAGER_OPTIONS -Djava.rmi.server.hostname=$hostname"
+ADDITIONAL_MANAGER_OPTIONS="\$ADDITIONAL_MANAGER_OPTIONS -Djava.rmi.server.hostname=$ip_address"
 EOF
 
 # JMX Groups
