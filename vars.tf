@@ -55,7 +55,7 @@ variable "settings" {
     opennms_ec2_user            = "ec2-user"
     opennms_ip_address          = "172.17.1.100"
     opennms_cache_max_entries   = 2000000 # for 50000 samples per second
-    opennms_ring_buffer_size    = 4194304 # for 50000 samples per second
+    opennms_ring_buffer_size    = 8388608 # for 50000 samples per second (with 4194304 dropped metrics are expected while filling up the resource cache)
   }
 }
 

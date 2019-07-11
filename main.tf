@@ -76,7 +76,6 @@ data "template_file" "opennms" {
 
   vars = {
     cassandra_server  = element(var.scylladb_ip_addresses, 0)
-    cassandra_dc      = "datacenter1"
     cassandra_rf      = var.settings["scylladb_replication_factor"]
     cache_max_entries = var.settings["opennms_cache_max_entries"]
     ring_buffer_size  = var.settings["opennms_ring_buffer_size"]

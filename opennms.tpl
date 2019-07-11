@@ -4,7 +4,6 @@
 # AWS Template Variables
 
 cassandra_server=${cassandra_server}
-cassandra_dc=${cassandra_dc}
 cassandra_rf=${cassandra_rf}
 cache_max_entries=${cache_max_entries}
 ring_buffer_size=${ring_buffer_size}
@@ -196,7 +195,7 @@ EOF
 # It is always a good idea to start with NetworkTopologyStrategy, even if a Multi-DC environment won't be used.
 newts_cql=$opennms_etc/newts.cql
 cat <<EOF > $newts_cql
-CREATE KEYSPACE newts WITH replication = {'class' : 'NetworkTopologyStrategy', '$cassandra_dc' : $cassandra_rf };
+CREATE KEYSPACE newts WITH replication = {'class' : 'SimpleStrategy', 'replication_factor' : $cassandra_rf };
 
 CREATE TABLE newts.samples (
   context text,
