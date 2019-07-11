@@ -126,19 +126,14 @@ if [ "$mem_in_mb" -gt "30720" ]; then
 fi
 
 # JVM Configuration with an advanced tuning for G1GC based on the chosen EC2 instance type
+hostname=$(hostname)
 cat <<EOF > $opennms_etc/opennms.conf
 START_TIMEOUT=0
 JAVA_HEAP_SIZE=$mem_in_mb
 MAXIMUM_FILE_DESCRIPTORS=204800
 
-ADDITIONAL_MANAGER_OPTIONS="\$ADDITIONAL_MANAGER_OPTIONS -d64 -Djava.net.preferIPv4Stack=true"
-ADDITIONAL_MANAGER_OPTIONS="\$ADDITIONAL_MANAGER_OPTIONS -XX:+PrintGCTimeStamps -XX:+PrintGCDetails"
-ADDITIONAL_MANAGER_OPTIONS="\$ADDITIONAL_MANAGER_OPTIONS -Xloggc:/opt/opennms/logs/gc.log"
-ADDITIONAL_MANAGER_OPTIONS="\$ADDITIONAL_MANAGER_OPTIONS -XX:+UseGCLogFileRotation"
-ADDITIONAL_MANAGER_OPTIONS="\$ADDITIONAL_MANAGER_OPTIONS -XX:NumberOfGCLogFiles=10"
-ADDITIONAL_MANAGER_OPTIONS="\$ADDITIONAL_MANAGER_OPTIONS -XX:GCLogFileSize=10M"
-
-ADDITIONAL_MANAGER_OPTIONS="\$ADDITIONAL_MANAGER_OPTIONS -XX:+UnlockCommercialFeatures -XX:+FlightRecorder"
+ADDITIONAL_MANAGER_OPTIONS="\$ADDITIONAL_MANAGER_OPTIONS -Djava.net.preferIPv4Stack=true"
+ADDITIONAL_MANAGER_OPTIONS="\$ADDITIONAL_MANAGER_OPTIONS -Xlog:gc:/opt/opennms/logs/gc.log"
 
 ADDITIONAL_MANAGER_OPTIONS="\$ADDITIONAL_MANAGER_OPTIONS -XX:+UseStringDeduplication"
 ADDITIONAL_MANAGER_OPTIONS="\$ADDITIONAL_MANAGER_OPTIONS -XX:+UseG1GC"
@@ -165,9 +160,6 @@ ADDITIONAL_MANAGER_OPTIONS="\$ADDITIONAL_MANAGER_OPTIONS -Dopennms.poller.server
 
 # Accept remote RMI connections on this interface
 ADDITIONAL_MANAGER_OPTIONS="\$ADDITIONAL_MANAGER_OPTIONS -Djava.rmi.server.hostname=$hostname"
-
-# If you enable Flight Recorder, be aware of the implications since it is a commercial feature of the Oracle JVM.
-#ADDITIONAL_MANAGER_OPTIONS="\$ADDITIONAL_MANAGER_OPTIONS -XX:StartFlightRecording=duration=600s,filename=opennms.jfr,delay=1h"
 EOF
 
 # JMX Groups
@@ -278,9 +270,8 @@ cqlsh -f $newts_cql $cassandra_server
 echo "### Creating Requisition..."
 
 mkdir -p $opennms_etc/imports/pending/
-echo <<EOF > $opennms_etc/imports/pending/AWS.xml
-<model-import xmlns="http://xmlns.opennms.org/xsd/config/model-import" date-stamp="2018-08-17T20:10:19.311Z" foreign-source="AWS" last-impo
-rt="2018-08-17T20:10:25.193Z">
+cat <<EOF > $opennms_etc/imports/pending/AWS.xml
+<model-import xmlns="http://xmlns.opennms.org/xsd/config/model-import" date-stamp="2019-07-01T00:00:00.000Z" foreign-source="AWS">
    <node foreign-id="opennms-server" node-label="opennms-server">
       <interface ip-addr="$ip_address" status="1" snmp-primary="P"/>
       <interface ip-addr="127.0.0.1" status="1" snmp-primary="N">
@@ -297,8 +288,8 @@ rt="2018-08-17T20:10:25.193Z">
 EOF
 
 mkdir -p $opennms_etc/foreign-sources/pending/
-echo <<EOF > $opennms_etc/foreign-sources/pending/AWS.xml
-<foreign-source xmlns="http://xmlns.opennms.org/xsd/config/foreign-source" name="AWS" date-stamp="2018-08-17T20:08:48.598Z">
+cat <<EOF > $opennms_etc/foreign-sources/pending/AWS.xml
+<foreign-source xmlns="http://xmlns.opennms.org/xsd/config/foreign-source" name="AWS" date-stamp="2019-07-01T00:00:00.000Z">
    <scan-interval>1d</scan-interval>
    <detectors>
       <detector name="ICMP" class="org.opennms.netmgt.provision.detector.icmp.IcmpDetector"/>
