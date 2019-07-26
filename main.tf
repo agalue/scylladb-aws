@@ -74,11 +74,13 @@ data "template_file" "opennms" {
   template = file("${path.module}/opennms.tpl")
 
   vars = {
-    cassandra_server  = element(var.scylladb_ip_addresses, 0)
-    cassandra_rf      = var.settings["scylladb_replication_factor"]
-    cache_max_entries = var.settings["opennms_cache_max_entries"]
-    ring_buffer_size  = var.settings["opennms_ring_buffer_size"]
-    use_redis         = var.settings["opennms_use_redis"]
+    scylladb_ip_addresses = join(" ", var.scylladb_ip_addresses)
+    scylladb_seed         = element(var.scylladb_ip_addresses, 0)
+    scylladb_rf           = var.settings["scylladb_replication_factor"]
+    cache_max_entries     = var.settings["opennms_cache_max_entries"]
+    ring_buffer_size      = var.settings["opennms_ring_buffer_size"]
+    connections_per_host  = var.settings["opennms_connections_per_host"]
+    use_redis             = var.settings["opennms_use_redis"]
   }
 }
 
@@ -112,7 +114,7 @@ resource "aws_instance" "opennms" {
 }
 
 output "scylladb" {
-  value = join(",", aws_instance.scylladb.*.public_ip)
+  value = join(", ", aws_instance.scylladb.*.public_ip)
 }
 
 output "onmscore" {

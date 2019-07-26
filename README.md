@@ -84,7 +84,7 @@ terraform destroy
 
 ## Results
 
-All the tests were performed using OpenNMS Horizon 24.1.2 with OpenJDK 11 and PostgreSQL 10 on the same server, running on a `c5.9xlarge` image.
+All the tests were performed using OpenNMS Horizon 24.1.2 with OpenJDK 11 and PostgreSQL 10 on the same server, running on a `c5.9xlarge` image. The reason for choosing this is because the impact of the `metrics:stress` command is lower than the normal `Collectd` operation, and the fact that OpenNMS is not doing any actual work besides running the stress test. For this reason, an administrator should have enough room for the extra work that OpenNMS would normally do, meaning the CPU load during these tests, should be as low as possible on the OpenNMS server.
 
 For the ScyllaDB cluster, their custom AMIs auto-configured are used. Nothing has been tune on those instances.
 

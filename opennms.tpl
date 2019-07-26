@@ -3,11 +3,13 @@
 
 # AWS Template Variables
 
-cassandra_server=${cassandra_server}
-cassandra_rf=${cassandra_rf}
-cache_max_entries=${cache_max_entries}
-ring_buffer_size=${ring_buffer_size}
-use_redis=${use_redis}
+scylladb_seed="${scylladb_seed}"
+scylladb_rf="${scylladb_rf}"
+scylladb_ip_addresses="${scylladb_ip_addresses}"
+cache_max_entries="${cache_max_entries}"
+connections_per_host="${connections_per_host}"
+ring_buffer_size="${ring_buffer_size}"
+use_redis="${use_redis}"
 
 ip_address=$(curl http://169.254.169.254/latest/meta-data/local-ipv4 2>/dev/null)
 
@@ -15,7 +17,12 @@ echo "### Installing common packages..."
 
 yum -y -q update
 amazon-linux-extras install epel -y
-yum -y -q install jq net-snmp net-snmp-utils git pytz dstat htop nmap-ncat tree redis
+yum -y -q install jq net-snmp net-snmp-utils git pytz dstat htop nmap-ncat tree redis telnet curl nmon
+
+echo "### Configuring Hostname and Domain..."
+
+hostnamectl set-hostname --static onms01
+echo "preserve_hostname: true" > /etc/cloud/cloud.cfg.d/99_hostname.cfg
 
 echo "### Configuring Kernel..."
 
@@ -124,7 +131,8 @@ fi
 echo "### Downloading and installing latest OpenJDK 11..."
 
 amazon-linux-extras install java-openjdk11 -y
-yum install -y -q java-11-openjdk-devel
+yum -y -q install java-11-openjdk-devel
+yum -y -q install maven
 
 echo "### Installing OpenNMS stable repository..."
 
@@ -213,7 +221,7 @@ newts_cfg=$opennms_etc/opennms.properties.d/newts.properties
 cat <<EOF > $newts_cfg
 # Basic Settings
 org.opennms.timeseries.strategy=newts
-org.opennms.newts.config.hostname=$cassandra_server
+org.opennms.newts.config.hostname=$scylladb_seed
 org.opennms.newts.config.keyspace=newts
 org.opennms.newts.config.port=9042
 # Production settings based required for the expected results from the metrics:stress tool
@@ -222,6 +230,7 @@ org.opennms.newts.config.cache.max_entries=$cache_max_entries
 org.opennms.newts.config.writer_threads=$num_of_cores
 org.opennms.newts.config.cache.priming.enable=true
 org.opennms.newts.config.cache.priming.block_ms=-1
+org.opennms.newts.config.max-connections-per-host=$connections_per_host
 # For collecting data every 30 seconds from OpenNMS and Cassandra
 org.opennms.newts.query.minimum_step=30000
 org.opennms.newts.query.heartbeat=450000
@@ -239,7 +248,7 @@ fi
 # It is always a good idea to start with NetworkTopologyStrategy, even if a Multi-DC environment won't be used.
 newts_cql=$opennms_etc/newts.cql
 cat <<EOF > $newts_cql
-CREATE KEYSPACE newts WITH replication = {'class' : 'SimpleStrategy', 'replication_factor' : $cassandra_rf };
+CREATE KEYSPACE newts WITH replication = {'class' : 'SimpleStrategy', 'replication_factor' : $scylladb_rf };
 
 CREATE TABLE newts.samples (
   context text,
@@ -302,19 +311,20 @@ $opennms_home/bin/install -dis
 
 echo "### Waiting for Cassandra..."
 
-until nodetool -h $cassandra_server status | grep $cassandra_server | grep -q "UN";
+until nodetool -h $scylladb_seed status | grep $scylladb_seed | grep -q "UN";
 do
   sleep 10
 done
 
 echo "### Creating Newts keyspace..."
 
-cqlsh -f $newts_cql $cassandra_server
+cqlsh -f $newts_cql $scylladb_seed
 
 echo "### Creating Requisition..."
 
 mkdir -p $opennms_etc/imports/pending/
-cat <<EOF > $opennms_etc/imports/pending/AWS.xml
+requisition=$opennms_etc/imports/pending/AWS.xml
+cat <<EOF > $requisition
 <model-import xmlns="http://xmlns.opennms.org/xsd/config/model-import" date-stamp="2019-07-01T00:00:00.000Z" foreign-source="AWS">
    <node foreign-id="opennms-server" node-label="opennms-server">
       <interface ip-addr="$ip_address" status="1" snmp-primary="P"/>
@@ -322,12 +332,19 @@ cat <<EOF > $opennms_etc/imports/pending/AWS.xml
          <monitored-service service-name="OpenNMS-JVM"/>
       </interface>
    </node>
-   <node foreign-id="cassandra-seed" node-label="cassandra-seed">
-      <interface ip-addr="$cassandra_server" status="1" snmp-primary="N">
+EOF
+IFS=' ' read -r -a array <<< "$scylladb_ip_addresses"
+for index in "$${!array[@]}"; do
+  cat <<EOF >> $requisition
+   <node foreign-id="cassandra$index" node-label="cassandra$index">
+      <interface ip-addr="$${array[index]}" status="1" snmp-primary="P">
          <monitored-service service-name="JMX-Cassandra"/>
          <monitored-service service-name="JMX-Cassandra-Newts"/>
       </interface>
    </node>
+EOF
+done
+cat <<EOF >> $requisition
 </model-import>
 EOF
 
@@ -355,3 +372,20 @@ until printf "" 2>>/dev/null >>/dev/tcp/$ip_address/8980; do printf '.'; sleep 1
 echo "### Import Test Requisition..."
 
 $opennms_home/bin/provision.pl requisition import AWS
+
+echo "### Downloading & Starting Scylla Monitoring..."
+
+yum -y -q install docker
+systemctl enable docker
+systemctl start docker
+
+yum install -y git python-pip
+pip install --upgrade pip
+pip install pyyaml
+
+smon_ver=2.4
+wget https://github.com/scylladb/scylla-grafana-monitoring/archive/scylla-monitoring-$smon_ver.tar.gz
+tar -xvf scylla-monitoring-$smon_ver.tar.gz
+cd scylla-monitoring-scylla-monitoring-$smon_ver
+./genconfig.py -d prometheus -sn $scylladb_ip_addresses
+./start-all.sh
