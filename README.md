@@ -70,7 +70,7 @@ The OpenNMS instance will have PostgreSQL 10 embedded, as well as a customized k
 
   On a side note, injecting 50K samples per second means that OpenNMS is collecting data from 15 million unique samples every 5 minutes. For 100K, 30 million.
 
-* Check the OpenNMS performance graphs to understand how it behaves. Additionally, you could check the Monitoring Tab on the AWS Console for each EC2 instance.
+* Check the OpenNMS performance graphs to understand how it behaves. Additionally, you could check the Monitoring Tab on the AWS Console for each EC2 instance. As the ScyllaDB Monitoring Tool is also installed, check the available Grafana dashboards on port 300 at the OpenNMS server.
 
 * Enjoy!
 
@@ -86,7 +86,7 @@ terraform destroy
 
 All the tests were performed using OpenNMS Horizon 24.1.2 with OpenJDK 11 and PostgreSQL 10 on the same server, running on a `c5.9xlarge` image. The reason for choosing this is because the impact of the `metrics:stress` command is lower than the normal `Collectd` operation, and the fact that OpenNMS is not doing any actual work besides running the stress test. For this reason, an administrator should have enough room for the extra work that OpenNMS would normally do, meaning the CPU load during these tests, should be as low as possible on the OpenNMS server.
 
-For the ScyllaDB cluster, their custom AMIs auto-configured are used. Nothing has been tune on those instances.
+For the ScyllaDB cluster, their custom AMIs auto-configured are used (based on version 3.0.8 by the time these tests were executed). Nothing has been tune on those instances.
 
 The major bottleneck is the indexing operation associated with filling up the resource cache every time OpenNMS starts (regardless if there is data on ScyllaDB or not).
 
@@ -120,8 +120,6 @@ The in-memory implementation based on Guava performs a lot better and faster tha
 
 We can easily conclude that the bigger the ScyllaDB cluster is, the faster it would be, reducing the pressure on the OpenNMS server and the cluster, especially when dealing with the resource cache.
 
-In theory, it might be possible to reach 100K samples per second at expenses of pushing the ScyllaDB cluster, meaning the resource buffer behavior will be affected.
-
 ### Use case 3: ScyllaDB cluster of 16 x i3.2xlarge (100K samples per second, in-memory cache)
 
 Considering the benefits of increasing the size of the ScyllaDB cluster, this time the injection rate has been duplicated. In terms of the OpenNMS configuration, the ring buffer was reduced by half.
@@ -137,4 +135,6 @@ Considering the benefits of increasing the size of the ScyllaDB cluster, this ti
 
 By doubling the cluster size, we were able to reduce the ring buffer requirement by half.
 
-In theory, it might be possible to reach 200K samples per second at expenses of pushing the ScyllaDB cluster, meaning the resource buffer behavior will be affected.
+### Datastax Driver Max Connections
+
+After setting `org.opennms.newts.config.max-connections-per-host` in OpenNMS to be 3 times the amount of cores of a given ScyllaDB node, plus duplicating the number of write threads, there was a slight improvement on the indexing time which was translated on using less the ring buffer, but unfortunately, the improvement was not dramatic.
