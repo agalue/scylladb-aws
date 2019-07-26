@@ -7,6 +7,7 @@ cassandra_server=${cassandra_server}
 cassandra_rf=${cassandra_rf}
 cache_max_entries=${cache_max_entries}
 ring_buffer_size=${ring_buffer_size}
+use_redis=${use_redis}
 
 ip_address=$(curl http://169.254.169.254/latest/meta-data/local-ipv4 2>/dev/null)
 
@@ -14,7 +15,7 @@ echo "### Installing common packages..."
 
 yum -y -q update
 amazon-linux-extras install epel -y
-yum -y -q install jq net-snmp net-snmp-utils git pytz dstat htop nmap-ncat tree
+yum -y -q install jq net-snmp net-snmp-utils git pytz dstat htop nmap-ncat tree redis
 
 echo "### Configuring Kernel..."
 
@@ -43,6 +44,23 @@ vm.zone_reclaim_mode=0
 vm.max_map_count=1048575
 EOF
 sysctl -p $sysctl_app
+
+echo "### Disable THP..."
+
+cat <<EOF > /etc/systemd/system/disable-thp.service
+[Unit]
+Description=Disable Transparent Huge Pages (THP)
+
+[Service]
+Type=simple
+ExecStart=/bin/sh -c "echo 'never' > /sys/kernel/mm/transparent_hugepage/enabled && echo 'never' > /sys/kernel/mm/transparent_hugepage/defrag"
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl daemon-reload
+systemctl enable disable-thp
+systemctl start disable-thp
 
 echo "### Configuring Net-SNMP..."
 
@@ -84,6 +102,24 @@ echo "### Installing Haveged..."
 yum -y -q install haveged
 systemctl enable haveged
 systemctl start haveged
+
+# Redis
+
+if [[ "$use_redis" == "true" ]]; then
+  echo "### Configuring Redis..."
+
+  echo "vm.overcommit_memory=1" > /etc/sysctl.d/redis.conf
+  sysctl -w vm.overcommit_memory=1
+  redis_conf=/etc/redis.conf
+  cp $redis_conf $redis_conf.bak
+  sed -i -r "s/^bind .*/bind 0.0.0.0/" $redis_conf
+  sed -i -r "s/^protected-mode .*/protected-mode no/" $redis_conf
+  sed -i -r "s/^save /# save /" $redis_conf
+  sed -i -r "s/^# maxmemory-policy .*/maxmemory-policy allkeys-lru/" $redis_conf
+
+  systemctl enable redis
+  systemctl start redis
+fi
 
 echo "### Downloading and installing latest OpenJDK 11..."
 
@@ -190,6 +226,14 @@ org.opennms.newts.config.cache.priming.block_ms=-1
 org.opennms.newts.query.minimum_step=30000
 org.opennms.newts.query.heartbeat=450000
 EOF
+
+if [[ "$use_redis" == "true" ]]; then
+  cat <<EOF >> $newts_cfg
+org.opennms.newts.config.cache.strategy=org.opennms.netmgt.newts.support.RedisResourceMetadataCache
+org.opennms.newts.config.cache.redis_hostname=127.0.0.1
+org.opennms.newts.config.cache.redis_port=6379
+EOF
+fi
 
 # This is the production ready configuration for the Newts keyspace, using NetworkTopologyStrategy and TimeWindowCompactionStrategy
 # It is always a good idea to start with NetworkTopologyStrategy, even if a Multi-DC environment won't be used.

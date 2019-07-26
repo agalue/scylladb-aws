@@ -39,7 +39,6 @@ resource "null_resource" "scylladb" {
   }
 }
 
-# The ScyllaDB instances
 resource "aws_instance" "scylladb" {
   count         = length(var.scylladb_ip_addresses)
   ami           = var.settings["scylladb_ami_id"]
@@ -79,6 +78,7 @@ data "template_file" "opennms" {
     cassandra_rf      = var.settings["scylladb_replication_factor"]
     cache_max_entries = var.settings["opennms_cache_max_entries"]
     ring_buffer_size  = var.settings["opennms_ring_buffer_size"]
+    use_redis         = var.settings["opennms_use_redis"]
   }
 }
 
