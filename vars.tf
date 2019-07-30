@@ -72,8 +72,8 @@ variable "settings" {
     opennms_ip_address           = "172.17.1.100"
     opennms_use_redis            = false
     opennms_cache_max_entries    = 4000000                 # Not used when Redis is enabled
-#   opennms_ring_buffer_size     = 4194304                 # Has to be a power of 2 (not enough when Redis is enabled)
-    opennms_ring_buffer_size     = 8388608                 # Has to be a power of 2
+    opennms_ring_buffer_size     = 4194304                 # Has to be a power of 2 (not enough when Redis is enabled)
+#   opennms_ring_buffer_size     = 8388608                 # Has to be a power of 2
     opennms_connections_per_host = 24                      # Has to be 2 or 3 times the number of cores on a given ScyllaDB node
   }
 }
