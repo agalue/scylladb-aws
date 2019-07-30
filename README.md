@@ -20,15 +20,17 @@ The OpenNMS instance will have PostgreSQL 10 embedded, as well as a customized k
 
 > *NOTE*: The templates requires Terraform version 0.12.x.
 
-* Tweak the common settings on `vars.tf`, specially `aws_key_name`, `aws_private_key` and `aws_region`.
+* Tweak the common settings on [vars.tf](vars.tf), specially `aws_key_name`, `aws_private_key` and `aws_region`.
 
   If the region is changed, keep in mind that the ScyllaDB AMIs are not available on every region (click [here](https://www.scylladb.com/download/#aws) for more information). The OpenNMS instance is based on Amazon Linux 2, which is available on all regions (make sure to use the correct AMI ID).
 
-  All the customizable settings are defined on `vars.tf`. Please do not change the other `.tf` files.
+  All the customizable settings are defined on [vars.tf](vars.tf). Please do not change the other `.tf` files.
 
-* Make sure you're able to create multiple instances of the chosen `i3` on your region (check `vars.tf`).
+* Make sure you're able to create multiple instances of the chosen `i3` on your region (check [vars.tf](vars.tf)).
 
   For example, the limit for `i3.8xlarge` is 2, and you'll have to request an extension in order to create 3 instances or more.
+
+* By default this recipe will use ScyllaDB. But, for educational purposes, Cassandra can be used instead by simply changing `settings.use_scylladb` to be `false` in [vars.tf](vars.tf). The same hardware will be used for the choosen cluster.
 
 * Execute the following commands from the repository's root directory (at the same level as the .tf files):
 

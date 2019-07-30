@@ -3,6 +3,7 @@
 
 # AWS Template Variables
 
+use_scylladb=${use_scylladb}
 scylladb_seed="${scylladb_seed}"
 scylladb_rf="${scylladb_rf}"
 scylladb_ip_addresses="${scylladb_ip_addresses}"
@@ -291,9 +292,13 @@ CREATE TABLE newts.resource_metrics (
 );
 EOF
 
+sed -r -i 's/cassandra-username/cassandra/g' $opennms_etc/poller-configuration.xml
+sed -r -i 's/cassandra-password/cassandra/g' $opennms_etc/poller-configuration.xml
+sed -r -i 's/cassandra-username/cassandra/g' $opennms_etc/collectd-configuration.xml
+sed -r -i 's/cassandra-password/cassandra/g' $opennms_etc/collectd-configuration.xml
+
 # To poll and collect statistics from OpenNMS and the ScyllaDB nodes every 30 seconds
 # This is not intended for production, it is here to be able to see how the solution behaves while running the metrics:stress tool.
-sed -r -i 's/step="300"/step="30"/g' $opennms_etc/telemetryd-configuration.xml 
 sed -r -i 's/interval="300000"/interval="30000"/g' $opennms_etc/collectd-configuration.xml 
 sed -r -i 's/interval="300000" user/interval="30000" user/g' $opennms_etc/poller-configuration.xml 
 sed -r -i 's/step="300"/step="30"/g' $opennms_etc/poller-configuration.xml 
@@ -311,7 +316,7 @@ $opennms_home/bin/install -dis
 
 echo "### Waiting for Cassandra..."
 
-until nodetool -h $scylladb_seed status | grep $scylladb_seed | grep -q "UN";
+until nodetool -h $scylladb_seed -u cassandra -pw cassandra status | grep $scylladb_seed | grep -q "UN";
 do
   sleep 10
 done
@@ -373,19 +378,21 @@ echo "### Import Test Requisition..."
 
 $opennms_home/bin/provision.pl requisition import AWS
 
-echo "### Downloading & Starting Scylla Monitoring..."
+if [[ "$use_scylladb" == "true" ]]; then
+  echo "### Downloading & Starting Scylla Monitoring..."
 
-yum -y -q install docker
-systemctl enable docker
-systemctl start docker
+  yum -y -q install docker
+  systemctl enable docker
+  systemctl start docker
 
-yum install -y git python-pip
-pip install --upgrade pip
-pip install pyyaml
+  yum install -y git python-pip
+  pip install --upgrade pip
+  pip install pyyaml
 
-smon_ver=2.4
-wget https://github.com/scylladb/scylla-grafana-monitoring/archive/scylla-monitoring-$smon_ver.tar.gz
-tar -xvf scylla-monitoring-$smon_ver.tar.gz
-cd scylla-monitoring-scylla-monitoring-$smon_ver
-./genconfig.py -d prometheus -sn $scylladb_ip_addresses
-./start-all.sh
+  smon_ver=2.4
+  wget https://github.com/scylladb/scylla-grafana-monitoring/archive/scylla-monitoring-$smon_ver.tar.gz
+  tar -xvf scylla-monitoring-$smon_ver.tar.gz
+  cd scylla-monitoring-scylla-monitoring-$smon_ver
+  ./genconfig.py -d prometheus -sn $scylladb_ip_addresses
+  ./start-all.sh
+fi
