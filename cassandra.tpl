@@ -6,13 +6,22 @@
 node_id="${node_id}"
 cluster_name="${cluster_name}"
 seed_name="${seed_name}"
+compaction_throughput="${compaction_throughput}"
 
 mount_point=/var/lib/cassandra
-device=/dev/nvme0n1
+device_name=nvme0n1
+device=/dev/$device_name
 conf_file=/etc/cassandra/conf/cassandra.yaml
 env_file=/etc/cassandra/conf/cassandra-env.sh
 jvm_file=/etc/cassandra/conf/jvm.options
 ip_address=$(curl http://169.254.169.254/latest/meta-data/local-ipv4 2>/dev/null)
+
+echo "### IO Tuning..."
+
+echo 1 > /sys/block/$device_name/queue/nomerges
+echo 8 > /sys/block/$device_name/queue/read_ahead_kb
+# The following might not work on i3 instances.
+echo deadline > /sys/block/$device_name/queue/scheduler
 
 echo "### Installing common packages..."
 
@@ -131,7 +140,7 @@ sed -r -i "/cluster_name/s/Test Cluster/$cluster_name/" $conf_file
 sed -r -i "/seeds/s/127.0.0.1/$seed_name/" $conf_file
 sed -r -i "/listen_address/s/localhost/$ip_address/" $conf_file
 sed -r -i "/rpc_address/s/localhost/$ip_address/" $conf_file
-
+sed -r -i "/compaction_throughput_mb_per_sec/s/16/$compaction_throughput" $conf_file
 # Cassandra Tuning
 num_of_cores=`cat /proc/cpuinfo | grep "^processor" | wc -l`
 sed -r -i "s|^[# ]*?concurrent_compactors: .*|concurrent_compactors: $num_of_cores|" $conf_file
@@ -169,6 +178,7 @@ sed -r -i "/G1RSetUpdatingPauseTimePercent/s/#-XX/-XX/" $jvm_file
 sed -r -i "/MaxGCPauseMillis/s/#-XX/-XX/" $jvm_file
 sed -r -i "/InitiatingHeapOccupancyPercent/s/#-XX/-XX/" $jvm_file
 sed -r -i "/ParallelGCThreads/s/#-XX/-XX/" $jvm_file
+sed -r -i "/PrintFLSStatistics/s/#-XX/-XX/" $jvm_file
 
 echo "### Configuring Common JMX..."
 

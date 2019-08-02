@@ -74,9 +74,10 @@ data "template_file" "cassandra" {
   template = file("${path.module}/cassandra.tpl")
 
   vars = {
-    node_id      = count.index + 1
-    cluster_name = var.settings["scylladb_cluster_name"]
-    seed_name    = element(var.scylladb_ip_addresses, 0)
+    node_id               = count.index + 1
+    cluster_name          = var.settings["scylladb_cluster_name"]
+    seed_name             = element(var.scylladb_ip_addresses, 0)
+    compaction_throughput = var.settings["compaction_throughput"]
   }
 }
 
@@ -112,9 +113,11 @@ resource "aws_instance" "cassandra" {
 
 # The template to install and configure OpenNMS
 data "template_file" "opennms" {
+  count = length(var.opennms_ip_addresses)
   template = file("${path.module}/opennms.tpl")
 
   vars = {
+    node_id               = count.index + 1
     use_scylladb          = var.settings.use_scylladb
     scylladb_ip_addresses = join(" ", var.scylladb_ip_addresses)
     scylladb_seed         = element(var.scylladb_ip_addresses, 0)
@@ -127,12 +130,13 @@ data "template_file" "opennms" {
 }
 
 resource "aws_instance" "opennms" {
+  count         = length(var.opennms_ip_addresses)
   ami           = var.settings["opennms_ami_id"]
   instance_type = var.settings["opennms_instance_type"]
   subnet_id     = aws_subnet.public.id
   key_name      = var.aws_key_name
-  private_ip    = var.settings["opennms_ip_address"]
-  user_data     = data.template_file.opennms.rendered
+  private_ip    = element(var.opennms_ip_addresses, count.index)
+  user_data     = element(data.template_file.opennms.*.rendered, count.index)
 
   associate_public_ip_address = true
 
@@ -149,7 +153,7 @@ resource "aws_instance" "opennms" {
   }
 
   tags = {
-    Name        = "Terraform OpenNMS Server"
+    Name        = "Terraform OpenNMS Server ${count.index + 1}"
     Environment = "Test"
     Department  = "Support"
   }
@@ -164,5 +168,5 @@ output "cassandra" {
 }
 
 output "onmscore" {
-  value = aws_instance.opennms.public_ip
+  value = join(", ", aws_instance.opennms.*.public_ip)
 }

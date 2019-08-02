@@ -1,10 +1,10 @@
 # ScyllaDB in AWS for OpenNMS
 
-This is a Test Environment to evaluate the performance of a Production Ready [ScyllaDB](https://www.scylladb.com/) Cluster using their AWS AMI against latest [OpenNMS](https://www.opennms.com/).
+This is a Test Environment to evaluate the performance of a Production Ready [ScyllaDB](https://www.scylladb.com/) Cluster using their AWS AMI (or [Cassandra](http://cassandra.apache.org) Cluster) against latest [OpenNMS Horizon](https://www.opennms.com/).
 
-The solution creates a 3 nodes ScyllaDB cluster using Storage Optimized Instances (i3).
+The solution creates a cluster using Storage Optimized Instances (i3).
 
-The OpenNMS instance will have PostgreSQL 10 embedded, as well as a customized keyspace for Newts designed for Multi-DC in mind using TWCS for the compaction strategy, which is the recommended configuration for production.
+The OpenNMS instances will have PostgreSQL 10 embedded, as well as a customized keyspace for Newts designed for Multi-DC in mind using TWCS for the compaction strategy, which is the recommended configuration for production.
 
 ## Installation and usage
 
@@ -22,7 +22,7 @@ The OpenNMS instance will have PostgreSQL 10 embedded, as well as a customized k
 
 * Tweak the common settings on [vars.tf](vars.tf), specially `aws_key_name`, `aws_private_key` and `aws_region`.
 
-  If the region is changed, keep in mind that the ScyllaDB AMIs are not available on every region (click [here](https://www.scylladb.com/download/#aws) for more information). The OpenNMS instance is based on Amazon Linux 2, which is available on all regions (make sure to use the correct AMI ID).
+  If the region is changed, keep in mind that the ScyllaDB AMIs are not available on every region (click [here](https://www.scylladb.com/download/#aws) for more information). The OpenNMS instance and Cassandra if used are based on Amazon Linux 2, which is available on all regions (make sure to use the correct AMI ID).
 
   All the customizable settings are defined on [vars.tf](vars.tf). Please do not change the other `.tf` files.
 
@@ -30,7 +30,9 @@ The OpenNMS instance will have PostgreSQL 10 embedded, as well as a customized k
 
   For example, the limit for `i3.8xlarge` is 2, and you'll have to request an extension in order to create 3 instances or more.
 
-* By default this recipe will use ScyllaDB. But, for educational purposes, Cassandra can be used instead by simply changing `settings.use_scylladb` to be `false` in [vars.tf](vars.tf). The same hardware will be used for the choosen cluster.
+* By default this recipe will use ScyllaDB. But, for comparison purposes, Cassandra can be used instead by simply changing `settings.use_scylladb` to be `false` in [vars.tf](vars.tf). The same hardware will be used for the choosen cluster.
+
+* To test load from multiple OpenNMS servers, it is possible to start multiple instances (check [vars.tf](vars.tf) for more details).
 
 * Execute the following commands from the repository's root directory (at the same level as the .tf files):
 
@@ -58,7 +60,7 @@ The OpenNMS instance will have PostgreSQL 10 embedded, as well as a customized k
 
   You could SSH from your own machine. In this case, use the public IP of the OpenNMS server (look for it at the AWS console, or check the Terraform output).
 
-* Execute the `metrics:stress` command. The following is an example to generate 50000 samples per second:
+* Execute the `metrics:stress` command on each OpenNMS server. The following is an example to generate fake samples to be injected into the cluster:
 
   ```shell
   metrics:stress -r 60 -n 15000 -f 20 -g 5 -a 10 -s 1 -t 200 -i 300

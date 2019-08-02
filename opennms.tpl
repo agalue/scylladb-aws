@@ -3,6 +3,7 @@
 
 # AWS Template Variables
 
+node_id=${node_id}
 use_scylladb=${use_scylladb}
 scylladb_seed="${scylladb_seed}"
 scylladb_rf="${scylladb_rf}"
@@ -22,7 +23,7 @@ yum -y -q install jq net-snmp net-snmp-utils git pytz dstat htop nmap-ncat tree 
 
 echo "### Configuring Hostname and Domain..."
 
-hostnamectl set-hostname --static onms01
+hostnamectl set-hostname --static onms$node_id
 echo "preserve_hostname: true" > /etc/cloud/cloud.cfg.d/99_hostname.cfg
 
 echo "### Configuring Kernel..."
@@ -323,7 +324,9 @@ done
 
 echo "### Creating Newts keyspace..."
 
-cqlsh -f $newts_cql $scylladb_seed
+if [ "$node_id" == "1" ]; then
+  cqlsh -f $newts_cql $scylladb_seed
+fi
 
 echo "### Creating Requisition..."
 
@@ -338,17 +341,19 @@ cat <<EOF > $requisition
       </interface>
    </node>
 EOF
-IFS=' ' read -r -a array <<< "$scylladb_ip_addresses"
-for index in "$${!array[@]}"; do
-  cat <<EOF >> $requisition
-   <node foreign-id="cassandra$index" node-label="cassandra$index">
-      <interface ip-addr="$${array[index]}" status="1" snmp-primary="P">
-         <monitored-service service-name="JMX-Cassandra"/>
-         <monitored-service service-name="JMX-Cassandra-Newts"/>
-      </interface>
-   </node>
+if [ "$node_id" == "1" ]; then
+  IFS=' ' read -r -a array <<< "$scylladb_ip_addresses"
+  for index in "$${!array[@]}"; do
+    cat <<EOF >> $requisition
+    <node foreign-id="cassandra$index" node-label="cassandra$index">
+        <interface ip-addr="$${array[index]}" status="1" snmp-primary="P">
+          <monitored-service service-name="JMX-Cassandra"/>
+          <monitored-service service-name="JMX-Cassandra-Newts"/>
+        </interface>
+    </node>
 EOF
-done
+  done
+fi
 cat <<EOF >> $requisition
 </model-import>
 EOF
