@@ -9,7 +9,11 @@ scylladb_seed="${scylladb_seed}"
 scylladb_rf="${scylladb_rf}"
 scylladb_ip_addresses="${scylladb_ip_addresses}"
 cache_max_entries="${cache_max_entries}"
-connections_per_host="${connections_per_host}"
+write_threads="${write_threads}"
+core_connections_per_host="${core_connections_per_host}"
+max_connections_per_host="${max_connections_per_host}"
+max_requests_per_connection="${max_requests_per_connection}"
+
 ring_buffer_size="${ring_buffer_size}"
 use_redis="${use_redis}"
 
@@ -226,13 +230,16 @@ org.opennms.timeseries.strategy=newts
 org.opennms.newts.config.hostname=$scylladb_seed
 org.opennms.newts.config.keyspace=newts
 org.opennms.newts.config.port=9042
-# Production settings based required for the expected results from the metrics:stress tool
+# Production settings based required for the expected results from the metrics stress tool
 org.opennms.newts.config.ring_buffer_size=$ring_buffer_size
 org.opennms.newts.config.cache.max_entries=$cache_max_entries
-org.opennms.newts.config.writer_threads=$num_of_cores
 org.opennms.newts.config.cache.priming.enable=true
 org.opennms.newts.config.cache.priming.block_ms=-1
-org.opennms.newts.config.max-connections-per-host=$connections_per_host
+# Performance settings
+org.opennms.newts.config.writer_threads=$${writer_threads-$num_of_cores}
+org.opennms.newts.config.core-connections-per-host=$core_connections_per_host
+org.opennms.newts.config.max-connections-per-host=$max_connections_per_host
+org.opennms.newts.config.max-requests-per-connection=$max_requests_per_connection
 # For collecting data every 30 seconds from OpenNMS and Cassandra
 org.opennms.newts.query.minimum_step=30000
 org.opennms.newts.query.heartbeat=450000

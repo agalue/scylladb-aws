@@ -6,12 +6,12 @@ provider "aws" {
 
 # The template to use when initializing a ScyllaDB instance based on their documentation
 data "template_file" "scylladb" {
-  template = file("${path.module}/scylladb.tpl")
+  template = file("scylladb.tpl")
 
   vars = {
-    cluster_name = var.settings["scylladb_cluster_name"]
+    cluster_name = var.settings.scylladb_cluster_name
     total_nodes  = length(var.scylladb_ip_addresses)
-    seed         = element(var.scylladb_ip_addresses, 0)
+    seed         = var.scylladb_ip_addresses[0]
   }
 }
 
@@ -23,9 +23,9 @@ resource "null_resource" "scylladb" {
   }
 
   connection {
-    host        = element(aws_instance.scylladb.*.public_ip, count.index)
+    host        = aws_instance.scylladb.*.public_ip[count.index]
     type        = "ssh"
-    user        = var.settings["scylladb_ec2_user"]
+    user        = var.settings.scylladb_ec2_user
     private_key = file(var.aws_private_key)
   }
 
@@ -41,11 +41,11 @@ resource "null_resource" "scylladb" {
 
 resource "aws_instance" "scylladb" {
   count         = var.settings.use_scylladb ? length(var.scylladb_ip_addresses) : 0
-  ami           = var.settings["scylladb_ami_id"]
-  instance_type = var.settings["scylladb_instance_type"]
+  ami           = var.settings.scylladb_ami_id
+  instance_type = var.settings.scylladb_instance_type
   subnet_id     = aws_subnet.public.id
   key_name      = var.aws_key_name
-  private_ip    = element(var.scylladb_ip_addresses, count.index)
+  private_ip    = var.scylladb_ip_addresses[count.index]
   user_data     = data.template_file.scylladb.rendered
 
   associate_public_ip_address = true
@@ -58,7 +58,7 @@ resource "aws_instance" "scylladb" {
   connection {
     host        = coalesce(self.public_ip, self.private_ip)
     type        = "ssh"
-    user        = var.settings["scylladb_ec2_user"]
+    user        = var.settings.scylladb_ec2_user
     private_key = file(var.aws_private_key)
   }
 
@@ -71,24 +71,24 @@ resource "aws_instance" "scylladb" {
 
 data "template_file" "cassandra" {
   count    = var.settings.use_scylladb ? 0 : length(var.scylladb_ip_addresses)
-  template = file("${path.module}/cassandra.tpl")
+  template = file("cassandra.tpl")
 
   vars = {
     node_id               = count.index + 1
-    cluster_name          = var.settings["scylladb_cluster_name"]
-    seed_name             = element(var.scylladb_ip_addresses, 0)
-    compaction_throughput = var.settings["compaction_throughput"]
+    cluster_name          = var.settings.scylladb_cluster_name
+    seed_name             = var.scylladb_ip_addresses[0]
+    compaction_throughput = var.settings.compaction_throughput
   }
 }
 
 resource "aws_instance" "cassandra" {
   count         = var.settings.use_scylladb ? 0 : length(var.scylladb_ip_addresses)
-  ami           = var.settings["cassandra_ami_id"]
-  instance_type = var.settings["cassandra_instance_type"]
+  ami           = var.settings.cassandra_ami_id
+  instance_type = var.settings.cassandra_instance_type
   subnet_id     = aws_subnet.public.id
   key_name      = var.aws_key_name
-  private_ip    = element(var.scylladb_ip_addresses, count.index)
-  user_data     = element(data.template_file.cassandra.*.rendered, count.index)
+  private_ip    = var.scylladb_ip_addresses[count.index]
+  user_data     = data.template_file.cassandra.*.rendered[count.index]
 
   associate_public_ip_address = true
 
@@ -100,7 +100,7 @@ resource "aws_instance" "cassandra" {
   connection {
     host        = coalesce(self.public_ip, self.private_ip)
     type        = "ssh"
-    user        = var.settings["cassandra_ec2_user"]
+    user        = var.settings.cassandra_ec2_user
     private_key = file(var.aws_private_key)
   }
 
@@ -113,30 +113,33 @@ resource "aws_instance" "cassandra" {
 
 # The template to install and configure OpenNMS
 data "template_file" "opennms" {
-  count = length(var.opennms_ip_addresses)
-  template = file("${path.module}/opennms.tpl")
+  count    = length(var.opennms_ip_addresses)
+  template = file("opennms.tpl")
 
   vars = {
-    node_id               = count.index + 1
-    use_scylladb          = var.settings.use_scylladb
-    scylladb_ip_addresses = join(" ", var.scylladb_ip_addresses)
-    scylladb_seed         = element(var.scylladb_ip_addresses, 0)
-    scylladb_rf           = var.settings["scylladb_replication_factor"]
-    cache_max_entries     = var.settings["opennms_cache_max_entries"]
-    ring_buffer_size      = var.settings["opennms_ring_buffer_size"]
-    connections_per_host  = var.settings["opennms_connections_per_host"]
-    use_redis             = var.settings["opennms_use_redis"]
+    node_id                     = count.index + 1
+    use_scylladb                = var.settings.use_scylladb
+    scylladb_ip_addresses       = join(" ", var.scylladb_ip_addresses)
+    scylladb_seed               = var.scylladb_ip_addresses[0]
+    scylladb_rf                 = var.settings.scylladb_replication_factor
+    cache_max_entries           = var.settings.newts_cache_max_entries
+    ring_buffer_size            = var.settings.newts_ring_buffer_size
+    write_threads               = var.settings.newts_write_threads
+    core_connections_per_host   = var.settings.newts_core_connections_per_host
+    max_connections_per_host    = var.settings.newts_max_connections_per_host
+    max_requests_per_connection = var.settings.newts_max_requests_per_connection
+    use_redis                   = var.settings.newts_use_redis
   }
 }
 
 resource "aws_instance" "opennms" {
   count         = length(var.opennms_ip_addresses)
-  ami           = var.settings["opennms_ami_id"]
-  instance_type = var.settings["opennms_instance_type"]
+  ami           = var.settings.opennms_ami_id
+  instance_type = var.settings.opennms_instance_type
   subnet_id     = aws_subnet.public.id
   key_name      = var.aws_key_name
-  private_ip    = element(var.opennms_ip_addresses, count.index)
-  user_data     = element(data.template_file.opennms.*.rendered, count.index)
+  private_ip    = var.opennms_ip_addresses[count.index]
+  user_data     = data.template_file.opennms.*.rendered[count.index]
 
   associate_public_ip_address = true
 
@@ -148,7 +151,7 @@ resource "aws_instance" "opennms" {
   connection {
     host        = coalesce(self.public_ip, self.private_ip)
     type        = "ssh"
-    user        = var.settings["opennms_ec2_user"]
+    user        = var.settings.opennms_ec2_user
     private_key = file(var.aws_private_key)
   }
 
