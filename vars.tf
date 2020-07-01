@@ -61,16 +61,16 @@ variable "settings" {
 
   default = {
     use_scylladb                      = true                    # Set this to true to use Scylla instead of Cassandra
-    scylladb_ami_id                   = "ami-0e95eca5de508e0cf" # ScyllaDB Custom AMI for us-west-2
+    scylladb_ami_id                   = "ami-0cc6bd8f57a31e972" # ScyllaDB Custom AMI for us-west-2
     scylladb_instance_type            = "i3.2xlarge"
     scylladb_ec2_user                 = "centos"
     scylladb_cluster_name             = "OpenNMS-Cluster"
     scylladb_replication_factor       = 2                       # It should be consistent with the cluster size. Check scylladb_ip_addresses
-    cassandra_ami_id                  = "ami-0d6621c01e8c2de2c" # Amazon Linux 2 for us-west-2
+    cassandra_ami_id                  = "ami-0e34e7b9ca0ace12d" # Amazon Linux 2 for us-west-2
     cassandra_instance_type           = "i3.2xlarge"            # 8 Cores, 64 GB of RAM
     cassandra_ec2_user                = "ec2-user"
     compaction_throughput             = 900
-    opennms_ami_id                    = "ami-0d6621c01e8c2de2c" # Amazon Linux 2 for us-west-2
+    opennms_ami_id                    = "ami-0e34e7b9ca0ace12d" # Amazon Linux 2 for us-west-2
     opennms_instance_type             = "c5.9xlarge"            # 36 Cores, 72GB of RAM
     opennms_ec2_user                  = "ec2-user"
     newts_use_redis                   = false
