@@ -1,18 +1,13 @@
 # @author: Alejandro Galue <agalue@opennms.org>
 
 variable "aws_region" {
-  description = "EC2 Region for the VPC. For testing purposes only, please use your own."
-  default     = "us-west-2"
+  description = "EC2 Region for the VPC (change it accordingly)"
+  default     = "us-east-2"
 }
 
 variable "aws_key_name" {
-  description = "AWS Key Name, to access EC2 instances through SSH. For testing purposes only, please use your own."
+  description = "AWS Key Name, to access EC2 instances through SSH (change it accordingly)"
   default     = "agalue"
-}
-
-variable "aws_private_key" {
-  description = "AWS Private Key Full Path. For testing purposes only, please use your own."
-  default     = "/Users/agalue/.ssh/agalue.private.aws.us-west-2.pem"
 }
 
 variable "vpc_cidr" {
@@ -33,11 +28,11 @@ variable "scylladb_ip_addresses" {
     "172.17.1.21",
     "172.17.1.22",
     "172.17.1.23",
-    "172.17.1.24",
-    "172.17.1.25",
-    "172.17.1.26",
-    "172.17.1.27",
-    "172.17.1.28",
+#    "172.17.1.24",
+#    "172.17.1.25",
+#    "172.17.1.26",
+#    "172.17.1.27",
+#    "172.17.1.28",
   ]
 }
 
@@ -47,8 +42,14 @@ variable "opennms_ip_addresses" {
 
   default = [
     "172.17.1.100",
-    "172.17.1.101",
+#    "172.17.1.101",
   ]
+}
+
+// https://www.scylladb.com/download/?platform=aws#open-source
+variable "scylladb_ami_id" {
+  description = "ScyllaDB AMI for the chosen region"
+  default = "ami-02e646407dab6f631"
 }
 
 // Careful with the AWS limits when choosing larger i3 instances
@@ -60,25 +61,20 @@ variable "settings" {
   type        = map(string)
 
   default = {
-    use_scylladb                      = true                    # Set this to true to use Scylla instead of Cassandra
-    scylladb_ami_id                   = "ami-0cc6bd8f57a31e972" # ScyllaDB Custom AMI for us-west-2
+    use_scylladb                      = true         # Set this to true to use Scylla instead of Cassandra
     scylladb_instance_type            = "i3.2xlarge"
     scylladb_ec2_user                 = "centos"
-    scylladb_cluster_name             = "OpenNMS-Cluster"
-    scylladb_replication_factor       = 2                       # It should be consistent with the cluster size. Check scylladb_ip_addresses
-    cassandra_ami_id                  = "ami-0e34e7b9ca0ace12d" # Amazon Linux 2 for us-west-2
-    cassandra_instance_type           = "i3.2xlarge"            # 8 Cores, 64 GB of RAM
-    cassandra_ec2_user                = "ec2-user"
+    scylladb_cluster_name             = "OpenNMS"
+    scylladb_replication_factor       = 2            # It should be consistent with the cluster size. Check scylladb_ip_addresses
+    cassandra_instance_type           = "i3.2xlarge" # 8 Cores, 64 GB of RAM
     compaction_throughput             = 900
-    opennms_ami_id                    = "ami-0e34e7b9ca0ace12d" # Amazon Linux 2 for us-west-2
-    opennms_instance_type             = "c5.9xlarge"            # 36 Cores, 72GB of RAM
-    opennms_ec2_user                  = "ec2-user"
+    opennms_instance_type             = "c5.9xlarge" # 36 Cores, 72GB of RAM
     newts_use_redis                   = false
-    newts_write_threads               = 36      # A multiple of the number of cores of the OpenNMS server
-    newts_cache_max_entries           = 2000000 # Not used when Redis is enabled
-    newts_ring_buffer_size            = 4194304 # Has to be a power of 2 (not enough when Redis is enabled)
-    newts_core_connections_per_host   = 24      # Has to be 2 or 3 times the number of cores on a given ScyllaDB node
-    newts_max_connections_per_host    = 24      # Has to be 2 or 3 times the number of cores on a given ScyllaDB node
+    newts_write_threads               = 36           # A multiple of the number of cores of the OpenNMS server
+    newts_cache_max_entries           = 2000000      # Not used when Redis is enabled
+    newts_ring_buffer_size            = 4194304      # Has to be a power of 2 (not enough when Redis is enabled)
+    newts_core_connections_per_host   = 24           # Has to be 2 or 3 times the number of cores on a given ScyllaDB node
+    newts_max_connections_per_host    = 24           # Has to be 2 or 3 times the number of cores on a given ScyllaDB node
     newts_max_requests_per_connection = 8192
   }
 }

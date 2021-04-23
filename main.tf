@@ -4,44 +4,30 @@ provider "aws" {
   region = var.aws_region
 }
 
+data "aws_ami" "amazon_linux_2" {
+  owners      = ["amazon"]
+  most_recent = true
+
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm*"]
+  }
+}
+
 # The template to use when initializing a ScyllaDB instance based on their documentation
 data "template_file" "scylladb" {
   template = file("scylladb.tpl")
 
   vars = {
     cluster_name = var.settings.scylladb_cluster_name
-    total_nodes  = length(var.scylladb_ip_addresses)
     seed         = var.scylladb_ip_addresses[0]
-  }
-}
-
-# Custom provider to fix Scylla JMX access, and install the SNMP agent.
-resource "null_resource" "scylladb" {
-  count = var.settings.use_scylladb ? length(aws_instance.scylladb.*.ami) : 0
-  triggers = {
-    cluster_instance_ids = element(aws_instance.scylladb.*.id, count.index)
-  }
-
-  connection {
-    host        = aws_instance.scylladb.*.public_ip[count.index]
-    type        = "ssh"
-    user        = var.settings.scylladb_ec2_user
-    private_key = file(var.aws_private_key)
-  }
-
-  provisioner "file" {
-    source      = "./scylladb-init.sh"
-    destination = "/tmp/scylladb-init.sh"
-  }
-
-  provisioner "remote-exec" {
-    inline = ["sudo sh /tmp/scylladb-init.sh"]
+    post_config  = base64encode(file("scylladb-init.sh"))
   }
 }
 
 resource "aws_instance" "scylladb" {
   count         = var.settings.use_scylladb ? length(var.scylladb_ip_addresses) : 0
-  ami           = var.settings.scylladb_ami_id
+  ami           = var.scylladb_ami_id
   instance_type = var.settings.scylladb_instance_type
   subnet_id     = aws_subnet.public.id
   key_name      = var.aws_key_name
@@ -54,13 +40,6 @@ resource "aws_instance" "scylladb" {
     aws_security_group.common.id,
     aws_security_group.scylladb.id,
   ]
-
-  connection {
-    host        = coalesce(self.public_ip, self.private_ip)
-    type        = "ssh"
-    user        = var.settings.scylladb_ec2_user
-    private_key = file(var.aws_private_key)
-  }
 
   tags = {
     Name        = "Terraform ScyllaDB Server ${count.index + 1}"
@@ -83,7 +62,7 @@ data "template_file" "cassandra" {
 
 resource "aws_instance" "cassandra" {
   count         = var.settings.use_scylladb ? 0 : length(var.scylladb_ip_addresses)
-  ami           = var.settings.cassandra_ami_id
+  ami           = data.aws_ami.amazon_linux_2.id
   instance_type = var.settings.cassandra_instance_type
   subnet_id     = aws_subnet.public.id
   key_name      = var.aws_key_name
@@ -96,13 +75,6 @@ resource "aws_instance" "cassandra" {
     aws_security_group.common.id,
     aws_security_group.scylladb.id,
   ]
-
-  connection {
-    host        = coalesce(self.public_ip, self.private_ip)
-    type        = "ssh"
-    user        = var.settings.cassandra_ec2_user
-    private_key = file(var.aws_private_key)
-  }
 
   tags = {
     Name        = "Terraform Cassandra Server ${count.index + 1}"
@@ -134,7 +106,7 @@ data "template_file" "opennms" {
 
 resource "aws_instance" "opennms" {
   count         = length(var.opennms_ip_addresses)
-  ami           = var.settings.opennms_ami_id
+  ami           = data.aws_ami.amazon_linux_2.id
   instance_type = var.settings.opennms_instance_type
   subnet_id     = aws_subnet.public.id
   key_name      = var.aws_key_name
@@ -147,13 +119,6 @@ resource "aws_instance" "opennms" {
     aws_security_group.common.id,
     aws_security_group.opennms.id,
   ]
-
-  connection {
-    host        = coalesce(self.public_ip, self.private_ip)
-    type        = "ssh"
-    user        = var.settings.opennms_ec2_user
-    private_key = file(var.aws_private_key)
-  }
 
   tags = {
     Name        = "Terraform OpenNMS Server ${count.index + 1}"

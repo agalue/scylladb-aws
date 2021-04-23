@@ -1,5 +1,6 @@
 #  Local .terraform directories
 **/.terraform/*
+*.terraform.lock.hcl
 
 # .tfstate files
 *.tfstate
@@ -7,3 +8,9 @@
 
 # .tfvars files
 *.tfvars
+
+# VSCode
+*.vscode
+
+# Temp
+TODO

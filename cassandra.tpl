@@ -116,6 +116,7 @@ EOF
 yum install -y -q cassandra cassandra-tools
 
 echo "### Creating partition on $device..."
+
 (
 echo o
 echo n
@@ -128,6 +129,7 @@ echo w
 mkfs.xfs -f $device
 
 echo "### Mounting partition..."
+
 mv $mount_point $mount_point.bak
 mkdir -p $mount_point
 mount -t xfs $device $mount_point
@@ -135,52 +137,52 @@ echo "$device $mount_point xfs defaults,noatime 0 0" >> /etc/fstab
 mv $mount_point.bak/* $mount_point/
 rmdir $mount_point.bak
 
-echo "### Configuring Cassandra..."
+echo "### Configure Main Cassandra Settings..."
+
 sed -r -i "/cluster_name/s/Test Cluster/$cluster_name/" $conf_file
 sed -r -i "/seeds/s/127.0.0.1/$seed_name/" $conf_file
 sed -r -i "/listen_address/s/localhost/$ip_address/" $conf_file
 sed -r -i "/rpc_address/s/localhost/$ip_address/" $conf_file
 sed -r -i "/compaction_throughput_mb_per_sec/s/16/$compaction_throughput" $conf_file
-# Cassandra Tuning
+
+echo "### Apply Cassandra Tuning..."
+
 num_of_cores=`cat /proc/cpuinfo | grep "^processor" | wc -l`
 sed -r -i "s|^[# ]*?concurrent_compactors: .*|concurrent_compactors: $num_of_cores|" $conf_file
 sed -r -i "s|^[# ]*?commitlog_total_space_in_mb: .*|commitlog_total_space_in_mb: 2048|" $conf_file
 
-# Cassandra Environment
+echo "### Enable external JMX Access..."
+
+sed -r -i "/rmi.server.hostname/s/^\#//" $env_file
+sed -r -i "/rmi.server.hostname/s/.public name./$ip_address/" $env_file
+sed -r -i "/jmxremote.access/s/#//" $env_file
+sed -r -i "/LOCAL_JMX=/s/yes/no/" $env_file
+
+echo "### Configure Heap Size..."
+
 total_mem_in_mb=`free -m | awk '/:/ {print $2;exit}'`
 mem_in_mb=`expr $total_mem_in_mb / 2`
 if [ "$mem_in_mb" -gt "30720" ]; then
   mem_in_mb="30720"
 fi
-sed -r -i "/rmi.server.hostname/s/^\#//" $env_file
-sed -r -i "/rmi.server.hostname/s/.public name./$ip_address/" $env_file
-sed -r -i "/jmxremote.access/s/#//" $env_file
-sed -r -i "/LOCAL_JMX=/s/yes/no/" $env_file
-sed -r -i "s/^[#]?MAX_HEAP_SIZE=\".*\"/MAX_HEAP_SIZE=\"$${mem_in_mb}m\"/" $env_file
-sed -r -i "s/^[#]?HEAP_NEWSIZE=\".*\"/HEAP_NEWSIZE=\"$${mem_in_mb}m\"/" $env_file
+sed -r -i "s/#-Xms4G/-Xms$${mem_in_mb}m/" $jvm_file
+sed -r -i "s/#-Xmx4G/-Xmx$${mem_in_mb}m/" $jvm_file
 
-# Disable CMSGC
-sed -r -i "/UseParNewGC/s/-XX/#-XX/" $jvm_file
-sed -r -i "/UseConcMarkSweepGC/s/-XX/#-XX/" $jvm_file
-sed -r -i "/CMSParallelRemarkEnabled/s/-XX/#-XX/" $jvm_file
-sed -r -i "/SurvivorRatio/s/-XX/#-XX/" $jvm_file
-sed -r -i "/MaxTenuringThreshold/s/-XX/#-XX/" $jvm_file
-sed -r -i "/CMSInitiatingOccupancyFraction/s/-XX/#-XX/" $jvm_file
-sed -r -i "/UseCMSInitiatingOccupancyOnly/s/-XX/#-XX/" $jvm_file
-sed -r -i "/CMSWaitDuration/s/-XX/#-XX/" $jvm_file
-sed -r -i "/CMSParallelInitialMarkEnabled/s/-XX/#-XX/" $jvm_file
-sed -r -i "/CMSEdenChunksRecordAlways/s/-XX/#-XX/" $jvm_file
-sed -r -i "/CMSClassUnloadingEnabled/s/-XX/#-XX/" $jvm_file
+echo "### Disable CMSGC..."
 
-# Enable G1GC
-sed -r -i "/UseG1GC/s/#-XX/-XX/" $jvm_file
-sed -r -i "/G1RSetUpdatingPauseTimePercent/s/#-XX/-XX/" $jvm_file
-sed -r -i "/MaxGCPauseMillis/s/#-XX/-XX/" $jvm_file
-sed -r -i "/InitiatingHeapOccupancyPercent/s/#-XX/-XX/" $jvm_file
-sed -r -i "/ParallelGCThreads/s/#-XX/-XX/" $jvm_file
-sed -r -i "/PrintFLSStatistics/s/#-XX/-XX/" $jvm_file
+ToDisable=(UseParNewGC UseConcMarkSweepGC CMSParallelRemarkEnabled SurvivorRatio MaxTenuringThreshold CMSInitiatingOccupancyFraction UseCMSInitiatingOccupancyOnly CMSWaitDuration CMSParallelInitialMarkEnabled CMSEdenChunksRecordAlways CMSClassUnloadingEnabled)
+for entry in "${ToDisable[@]}"; do
+  sed -r -i "/$entry/s/-XX/#-XX/" $jvm_file
+done
 
-echo "### Configuring Common JMX..."
+echo "### Enable G1GC..."
+
+ToEnable=(UseG1GC G1RSetUpdatingPauseTimePercent MaxGCPauseMillis InitiatingHeapOccupancyPercent ParallelGCThreads)
+for entry in "${ToEnable[@]}"; do
+  sed -r -i "/$entry/s/#-XX/-XX/" $jvm_file
+done
+
+echo "### Configuring JMX access..."
 
 jmx_passwd=/etc/cassandra/jmxremote.password
 jmx_access=/etc/cassandra/jmxremote.access
@@ -202,6 +204,8 @@ controlRole   readwrite \
 EOF
 chmod 0400 $jmx_access
 chown cassandra:cassandra $jmx_access
+
+echo "### Awaiting for Seed..."
 
 start_delay=$((60*($node_id-1)))
 if [[ $start_delay != 0 ]]; then
