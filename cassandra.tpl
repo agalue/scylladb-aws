@@ -1,6 +1,8 @@
 #!/bin/bash
 # Author: Alejandro Galue <agalue@opennms.org>
 
+set -e
+
 # AWS Template Variables
 
 node_id="${node_id}"
@@ -150,6 +152,8 @@ echo "### Apply Cassandra Tuning..."
 num_of_cores=`cat /proc/cpuinfo | grep "^processor" | wc -l`
 sed -r -i "s|^[# ]*?concurrent_compactors: .*|concurrent_compactors: $num_of_cores|" $conf_file
 sed -r -i "s|^[# ]*?commitlog_total_space_in_mb: .*|commitlog_total_space_in_mb: 2048|" $conf_file
+sed -r -i "/num_tokens:/s/256/16/" $conf_file
+sed -r -i "/enable_materialized_views:/s/true/false/" $conf_file
 
 echo "### Enable external JMX Access..."
 

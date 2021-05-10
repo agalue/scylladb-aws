@@ -4,14 +4,16 @@ provider "aws" {
   region = var.aws_region
 }
 
+data "aws_ami" "scylla" {
+  owners      = ["797456418907"]
+  most_recent = true
+  name_regex  = "^ScyllaDB 4\\.4\\.*"
+}
+
 data "aws_ami" "amazon_linux_2" {
   owners      = ["amazon"]
   most_recent = true
-
-  filter {
-    name   = "name"
-    values = ["amzn2-ami-hvm*"]
-  }
+  name_regex  = "^amzn2-ami-hvm.*"
 }
 
 # The template to use when initializing a ScyllaDB instance based on their documentation
@@ -27,7 +29,7 @@ data "template_file" "scylladb" {
 
 resource "aws_instance" "scylladb" {
   count         = var.settings.use_scylladb ? length(var.scylladb_ip_addresses) : 0
-  ami           = var.scylladb_ami_id
+  ami           = data.aws_ami.scylla.id
   instance_type = var.settings.scylladb_instance_type
   subnet_id     = aws_subnet.public.id
   key_name      = var.aws_key_name

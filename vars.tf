@@ -46,12 +46,6 @@ variable "opennms_ip_addresses" {
   ]
 }
 
-// https://www.scylladb.com/download/?platform=aws#open-source
-variable "scylladb_ami_id" {
-  description = "ScyllaDB AMI for the chosen region"
-  default = "ami-02e646407dab6f631"
-}
-
 // Careful with the AWS limits when choosing larger i3 instances
 // i3.2xlarge :  8 Cores,  64 GB of RAM
 // i3.4xlarge : 16 Cores, 122 GB of RAM
